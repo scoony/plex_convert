@@ -111,6 +111,7 @@ for dependency in $my_dependencies ; do
     echo -e "$ui_tag_bad Dependency missing: $dependency"
   fi
 done
+echo ""
 
 
 #######################
@@ -138,6 +139,7 @@ if [[ "$check_root_cron" != "" ]]; then
     fi
   fi
 fi
+echo ""
 
 
 #######################
@@ -263,16 +265,16 @@ if [[ "$processing" != "no" ]]; then
     handbrake_default=" (default)"
   fi
   echo -e "$ui_tag_ok Movie resolution: $media_standard_resolution - Encoding profile: $handbrake_profile$handbrake_default"
-  if [[ "$media_standard_resolution" == "4K" ]]; then
-    resolution_tag="4k|UHD|2160p"
-  elif [[ "$media_standard_resolution" == "QHD" ]]; then
-    resolution_tag="qhd|2k|1440p"
-  elif [[ "$media_standard_resolution" == "Full_HD" ]]; then
-    resolution_tag="full_hd|1080p"
+  if [[ "$media_standard_resolution" == "DVD" ]]; then
+    resolution_tag="dvd|576p"
   elif [[ "$media_standard_resolution" == "HD" ]]; then
     resolution_tag="hd|720p"
-  elif [[ "$media_standard_resolution" == "DVD" ]]; then
-    resolution_tag="dvd|576p"
+  elif [[ "$media_standard_resolution" == "Full_HD" ]]; then
+    resolution_tag="full_hd|1080p"
+  elif [[ "$media_standard_resolution" == "QHD" ]]; then
+    resolution_tag="qhd|2k|1440p"
+  elif [[ "$media_standard_resolution" == "4K" ]]; then
+    resolution_tag="4k|UHD|2160p"
   fi
   if [[ "$media_type" == "movies" ]]; then
     type_tag="movie|film"
