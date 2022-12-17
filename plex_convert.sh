@@ -78,20 +78,20 @@ function display_loading() {
 standard-resolution() {
 x=`echo $1 | awk '{ print $1}'`
 y=`echo $1 | awk '{ print $3}'`
-## resolution_4k="3840 x 2160"     ## (x) 10% 3456 / (y) 27% donc 1577
-## resolution_qhd="2560 x 1440"    ## (x) 10% 2304 / (y) 27% donc 1051
-## resolution_fullhd="1920 x 1080" ## (x) 10% 1728 / (y) 27% donc 788
-## resolution_hd="1280 x 720"      ## (x) 10% 1152 / (y) 27% donc 525
-## resolution_dvd="720 × 576"      ## (x) 10% 648  / (y) 27% donc 420
-if [[ "$x" -ge "3456" ]] && [[ "$y" -ge "1577" ]]; then
+## resolution_4k="3840 x 2160"     ## (x) 27% 2803 / (y) 27% donc 1577
+## resolution_qhd="2560 x 1440"    ## (x) 27% 1868 / (y) 27% donc 1051
+## resolution_fullhd="1920 x 1080" ## (x) 27% 1401 / (y) 27% donc 788
+## resolution_hd="1280 x 720"      ## (x) 27% 934 / (y) 27% donc 525
+## resolution_dvd="720 × 576"      ## (x) 27% 525  / (y) 27% donc 420
+if [[ "$x" -ge "2803" ]] && [[ "$y" -ge "1577" ]]; then
   echo "4K"
-elif [[ "$x" -ge "2304" ]] && [[ "$y" -ge "1051" ]]; then
+elif [[ "$x" -ge "1868" ]] && [[ "$y" -ge "1051" ]]; then
   echo "QHD"
-elif [[ "$x" -ge "1728" ]] && [[ "$y" -ge "788" ]]; then
+elif [[ "$x" -ge "1401" ]] && [[ "$y" -ge "788" ]]; then
   echo "Full_HD"
-elif [[ "$x" -ge "1152" ]] && [[ "$y" -ge "525" ]]; then
+elif [[ "$x" -ge "934" ]] && [[ "$y" -ge "525" ]]; then
   echo "HD"
-elif [[ "$x" -ge "648" ]] && [[ "$y" -ge "420" ]]; then
+elif [[ "$x" -ge "525" ]] && [[ "$y" -ge "420" ]]; then
   echo "DVD"
 else
   echo "\e[41m! Too low !\e[0m"
