@@ -100,6 +100,20 @@ fi
 
 
 #######################
+## Dependencies
+section_title="Checking dependencies"
+printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
+my_dependencies="filebot curl awk HandBrakeCLI"
+for dependency in $my_dependencies ; do
+  if $dependency -help > /dev/null 2>/dev/null ; then
+    echo -e "$ui_tag_ok Dependency: $dependency"
+  else
+    echo -e "$ui_tag_bad Dependency missing: $dependency"
+  fi
+done
+
+
+#######################
 ## Update the locate db and load plex_sort config
 section_title="Searching for existing configs"
 printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
@@ -255,6 +269,10 @@ if [[ "$processing" != "no" ]]; then
     resolution_tag="qhd|2k|1440p"
   elif [[ "$media_standard_resolution" == "Full_HD" ]]; then
     resolution_tag="full_hd|1080p"
+  elif [[ "$media_standard_resolution" == "HD" ]]; then
+    resolution_tag="hd|720p"
+  elif [[ "$media_standard_resolution" == "DVD" ]]; then
+    resolution_tag="dvd|576p"
   fi
   if [[ "$media_type" == "movies" ]]; then
     type_tag="movie|film"
