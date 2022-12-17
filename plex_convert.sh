@@ -4,7 +4,7 @@
 #######################
 ## Script configuration
 if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
-  my_settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo"
+  my_settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo ffmpeg_check"
   my_config_file=`cat "$HOME/.config/plex_convert/plex_convert.conf"`
   for script_variable in $my_settings_variables ; do
     if [[ ! "$my_config_file" =~ "$script_variable" ]]; then
@@ -100,7 +100,7 @@ fi
 
 
 #######################
-## Update the locate db
+## Update the locate db and load plex_sort config
 section_title="Searching for existing configs"
 printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
 echo -e "$ui_tag_ok Updating locate DB..."
@@ -113,10 +113,10 @@ if [[ "$check_root_cron" != "" ]]; then
     echo -e "$ui_tag_ok Plex_Sort is currently activated in the root account"
     if [[ "$plex_sort_config" != "" ]]; then
       echo -e "$ui_tag_ok Configuration found: $plex_sort_config"
-      echo "$sudo" | sudo -kS cat "$plex_sort_config" 2>/dev/null | grep -i "filebot" > $home_temp/filebot_conf.conf
+      echo "$sudo" | sudo -kS cat "$plex_sort_config" 2>/dev/null > $home_temp/filebot_conf_full.conf
+      cat $home_temp/filebot_conf_full.conf | grep -i "filebot" > $home_temp/filebot_conf.conf
       source "$home_temp/filebot_conf.conf"
       echo -e "$(cat $home_temp/filebot_conf.conf | sed "s/^/$ui_tag_ok_sed Import: /g" | sed 's/##.*$//g' )"
-      rm $home_temp/filebot_conf.conf
     else
       echo -e "$ui_tag_bad Unable to find Plex_Sort configuration"
       echo -e "$ui_tag_bad Critical error... exit"
@@ -167,18 +167,21 @@ while IFS= read -r -d $'\n'; do
 media_audio_format+=("$REPLY")
 done <$home_temp/media-audio-format.log
 rm $home_temp/media-audio-format.log
-filebot -rename "$file" --action test -non-strict > $home_temp/media-filebot.log 2>&1 & display_loading $!
+#filebot -rename "$file" --action test -non-strict > $home_temp/media-filebot.log 2>&1 & display_loading $!
+filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{genres}/{n} ({y})" --output $home_temp > $home_temp/media-filebot.log 2>&1 & display_loading $!
 media_type=` cat $home_temp/media-filebot.log | grep "^Rename" | awk '{ print $2 }'`
 media_name_raw=`cat $home_temp/media-filebot.log | grep "^\[TEST\]" | grep -oP '(?<=to \[).*(?=\]$)'`
 media_name=` echo ${media_name_raw##*/} | cut -f 1 -d '.'`
-if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]]; then
+if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]] || [[ "$media_name_raw" == "" ]]; then
   media_name="\e[41m! FileBot can't process this file !\e[0m"
 fi
 media_filename=` basename "$file"`
+media_genres=`echo "$media_name_raw" | grep -oP '(?<=\[).*(?=\]\/)'`
 rm $home_temp/media-filebot.log
 echo -e "$ui_tag_ok Filename: "$media_filename
 echo -e "$ui_tag_ok Type: "$(echo $media_type | sed 's/s$//')
 echo -e "$ui_tag_ok Real name: "$media_name
+echo -e "$ui_tag_ok Genres: "$media_genres
 echo -e "$ui_tag_ok Format: "$media_format
 echo -e "$ui_tag_ok Bit rate: "$(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)
 echo -e "$ui_tag_ok Resolution: $media_standard_resolution ( $media_resolution )"
@@ -197,11 +200,33 @@ for i in {0..10} ; do
 done
 ((array_current = array_current + 1))
 processing="yes"
+
+## Check integrity (ffmpeg)
+if [[ "$ffmpeg_check" == "yes" ]]; then
+  echo -e "$ui_tag_checking Checking file integrity..."
+  time1=`date +%s`
+  ffmpeg -hide_banner -i "$file" -f null - > $home_temp/ffmpeg_check.log 2>&1 & display_loading $!
+  time2=`date +%s`
+  duration=$(($time2-$time1))
+  ffmpeg_error=`cat $home_temp/ffmpeg_check.log | grep "error"`
+  rm $home_temp/ffmpeg_check.log
+## Doit paufiner absolument
+  if [[ "$ffmpeg_error" != "" ]]; then
+    echo -e "$ui_tag_bad Error reading the file"
+    echo -e "$ui_tag_bad Skipping this file"
+    processing="no"
+  else
+    echo -e "$ui_tag_ok File checked, no error ("$duration"s)"
+  fi
+fi
+
+## Check language
 if [[ "$no_language_info" == "1" ]] || [[ ! "${media_audio_language[@]}" =~ "$audio_required" ]]; then
   echo -e "$ui_tag_bad No conversion because language missing ($audio_required)"
   processing="no"
 fi
 
+## Check resolution
 if [[ "$media_standard_resolution" == "\e[41m! Too low !\e[0m" ]]; then
   echo -e "$ui_tag_bad No conversion because resolution is too low"
   processing="no"
@@ -224,6 +249,41 @@ if [[ "$processing" != "no" ]]; then
     handbrake_default=" (default)"
   fi
   echo -e "$ui_tag_ok Movie resolution: $media_standard_resolution - Encoding profile: $handbrake_profile$handbrake_default"
+  if [[ "$media_standard_resolution" == "4K" ]]; then
+    resolution_tag="4k|UHD|2160p"
+  elif [[ "$media_standard_resolution" == "QHD" ]]; then
+    resolution_tag="qhd|2k|1440p"
+  elif [[ "$media_standard_resolution" == "Full_HD" ]]; then
+    resolution_tag="full_hd|1080p"
+  fi
+  if [[ "$media_type" == "movies" ]]; then
+    type_tag="movie|film"
+  elif [[ "$media_type" == "episodes" ]]; then
+    if [[ "$media_genres" =~ "Animation" ]]; then
+      type_tag="anime|animation|manga"
+    else
+      type_tag="serie|tv|show"
+    fi
+  fi
+  target_folder=`cat "$home_temp/filebot_conf.conf" | grep -i "filebot" | egrep -i "$type_tag" | egrep -i "$resolution_tag" | cut -f 1 -d '='`
+  if [[ "$target_folder" != "" ]]; then
+    echo -e "$ui_tag_ok Target folder: $target_folder"
+    download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+    echo -e "$ui_tag_ok Full destination: $download_folder_location/$target_folder"
+  else
+    ## default
+    if [[ "$(cat "$home_temp/filebot_conf.conf" | grep -i "filebot" | egrep -i "$type_tag" | cut -f 1 -d '=' | wc -l)" == "1" ]]; then
+      target_folder=`cat "$home_temp/filebot_conf.conf" | grep -i "filebot" | egrep -i "$type_tag" | cut -f 1 -d '='`
+      echo -e "$ui_tag_ok Target folder: $target_folder (only one detected, using as default)"
+      download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+      echo -e "$ui_tag_ok Full destination: $download_folder_location/$target_folder"
+    else
+      echo -e "$ui_tag_bad Target not found"
+    fi
+  fi
 fi
 done
+
+rm $home_temp/filebot_conf.conf
+rm $home_temp/filebot_conf_full.conf
 
