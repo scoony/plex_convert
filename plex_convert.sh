@@ -262,6 +262,7 @@ mkdir -p "$error_folder" 2>/dev/null
 #######################
 ## UI tags
 ui_tag_checking="[\e[43m \u003F \e[0m]"
+ui_tag_encoding="[\e[7m \u238B \e[0m]"
 ui_tag_ok="[\e[42m \u2713 \e[0m]"
 ui_tag_ok_sed="[\\\e[42m \\\u2713 \\\e[0m]"
 ui_tag_bad="[\e[41m \u2713 \e[0m]"
@@ -289,6 +290,35 @@ function display_loading() {
   while kill -0 "$pid" 2>/dev/null; do
     i=$(((i + $charwidth) % ${#spin}))
     printf "\r[\e[43m \u039E \e[0m] %"$lengh_spinner"s %s" "$mui_loading_spinner" "${spin:$i:$charwidth}"
+    sleep .1
+  done
+  tput cnorm
+  printf "$mon_printf" && printf "\r"
+}
+
+
+#######################
+## Encoding spinner
+function encoding_loading() {
+  pid="$*"
+  if [[ "$mui_encoding_spinner" == "" ]]; then                                               ## MUI
+    mui_encoding_spinner="Encoding..."                                                        ##
+  fi                                                                                        ##
+  lengh_spinner2=${#mui_encoding_spinner}
+  if [[ "$encoding_spinner" == "" ]]; then
+    spin2='⣾⣽⣻⢿⡿⣟⣯⣷'
+  else
+    spin2=$encoding_spinner
+  fi
+  charwidth=1
+  i=0
+  tput civis # cursor invisible
+  mon_printf="\r                                                                             "
+  while kill -0 "$pid" 2>/dev/null; do
+    progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
+    i=$(((i + $charwidth) % ${#spin}))
+    printf "$mon_printf"
+    printf "\r[\e[7m \u238B \e[0m] [$progress \u0025] %"$lengh_spinner2"s %s" "$mui_encoding_spinner" "${spin2:$i:$charwidth}"
     sleep .1
   done
   tput cnorm
@@ -546,6 +576,24 @@ if [[ "$processing" != "no" ]]; then
     else
       echo -e "$ui_tag_bad Target not found"
     fi
+  fi
+  ## Encoding
+  my_preset_file=`echo "$home_temp/Profiles/"$handbrake_profile".json"`
+##  echo "DEBUG: $my_preset_file"
+  if [[ -f "$my_preset_file" ]]; then
+    echo -e "$ui_tag_ok Handbrake preset found ("$handbrake_profile".json)"
+    temp_folder=`echo $download_folder_location"/"$script_name"_temp"`
+    mkdir -p "$temp_folder"
+    temp_target=`echo $temp_folder"/"$media_filename"-part"`
+    final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
+    echo -e "$ui_tag_encoding Sending the file to HandBrake..."
+    time1=`date +%s`
+    HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
+    time2=`date +%s`
+    duration=$(($time2-$time1))
+    echo -e "$ui_tag_ok Conversion completed in $(date -d@$duration -u +%H:%M:%S)..."
+  else
+      echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
 fi
 done
