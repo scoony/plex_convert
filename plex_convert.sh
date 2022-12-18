@@ -1,6 +1,212 @@
 #!/bin/bash
 
 
+## Generating variables for script
+script_name=$(basename $0 | cut -d'.' -f1)
+script_name_cap=${script_name^^}
+script_name_full=$(basename $0)
+script_bin=$0
+script_conf=`echo $HOME"/.config/"$script_name"/"$script_name".conf"`
+script_remote="https://raw.githubusercontent.com/scoony/$script_name/main/$script_name_full"
+script_cron_log=`echo "/var/log/"$script_name".log"`
+
+
+#######################
+## Advanced command arguments
+die() { echo "$*" >&2; exit 2; }  # complain to STDERR and exit with error
+needs_arg() { if [ -z "$OPTARG" ]; then die "No arg for --$OPT option"; fi; }
+
+while getopts eushf:cm:l:-: OPT; do
+  # support long options: https://stackoverflow.com/a/28466267/519360
+  if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+    OPT="${OPTARG%%=*}"       # extract long option name
+    OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+    OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+  fi
+  case "$OPT" in
+    h | help )
+            echo -e "\033[1m$script_name_cap - help\033[0m"
+            echo ""
+            echo "Usage : $script_bin [option]"
+            echo ""
+            echo "Available options:"
+            echo "[value*] means optional argument"
+            echo ""
+            echo " -h or --help                              : this help menu"
+            echo " -u or --update                            : update this script"
+            echo " -m [value] or --mode=[value]              : change display mode (full)"
+            echo " -l [value] or --language=[value]          : override language (fr or en)"
+            echo " -c or --cron-log                          : display latest cron log"
+            echo " -e [value*] or --edit-config=[value*]     : edit config file (default: nano)"
+            echo " -s [value*] or --status=[value*]          : status/enable/disable the script"
+            echo " -f \"[value]\" or --find=\"[value]\"          : find something in the logs"
+            exit 0
+            ;;
+    f | find )
+            needs_arg
+            arg_search_value="$OPTARG"
+            echo -e "\033[1m$script_name_cap - find feature\033[0m"
+            echo "This feature require root privileges"
+            echo ""
+            echo "Checking for root privileges..."
+            source "$script_conf" 2>/dev/null
+            if [[ "$sudo" == "" ]] && [[ "$EUID" != "0" ]]; then
+              echo "No root privileges... exit"
+            else
+              echo "Root privileges granted"
+            fi
+            echo "Updating db..."
+            echo "$sudo" | sudo -kS updatedb 2>/dev/null
+            logs_path=`echo "$sudo" | sudo -kS locate -r "/$script_name/logs$" 2>/dev/null`
+            echo "Searching..."
+            for log_path in $logs_path ; do
+              my_logs=( `echo "$sudo" | sudo -kS find $log_path -type f 2>/dev/null` )
+              for my_log in ${my_logs[@]} ; do
+                echo "$sudo" | sudo -kS grep -Hin "$arg_search_value" $my_log 2>/dev/null
+              done
+            done
+            exit 0
+            ;;
+    u | update )
+            echo -e "\033[1m$script_name_cap - Update initiated\033[0m"
+            read -n 1 -p "Do you want to proceed [y/N]:" yn
+            printf "\r                                                     "
+            if [[ "${yn}" == @(y|Y) ]]; then
+              echo ""
+              this_script=$(realpath -s "$0")
+              echo "Script location : "$this_script
+              script_remote="$script_remote"
+              if curl -m 2 --head --silent --fail "$script_remote" 2>/dev/null >/dev/null; then
+                echo "Script available online on GitHub "
+                md5_local=`md5sum "$this_script" | cut -f1 -d" " 2>/dev/null`
+                md5_remote=`curl -s "$script_remote" | md5sum | cut -f1 -d" "`
+                echo "MD5 local  : "$md5_local
+                echo "MD5 remote : "$md5_remote
+                if [[ "$md5_local" != "$md5_remote" ]]; then
+                  echo "A new version of the script is available... downloading"
+##                  curl -s -m 3 --create-dir -o "$this_script" "$script_remote"
+                  echo "Update completed... exit"
+                else
+                  echo "The script is up to date... exit"
+                fi
+              else
+                echo "Script offline"
+              fi
+            else
+              echo ""
+              echo "Nothing was done"
+            fi
+            exit 0
+            ;;
+    c | cron-log )
+            echo -e "\033[1m$script_name_cap - latest cron log\033[0m"
+            echo ""
+            if [[ -f "$script_cron_log" ]]; then
+              date_log=`date -r "$script_cron_log" `
+              cat "$script_cron_log"
+              echo ""
+              echo "Log created : "$date_log
+            else
+              echo "No log found"
+            fi
+            exit 0
+            ;;
+    m | mode )
+            needs_arg
+            arg_display_mode="$OPTARG"
+            display_mode_supported=( "full" )
+            echo -e "\033[1m$script_name_cap - display mode override\033[0m"
+            echo ""
+            if [[ "${display_mode_supported[@]}" =~ "$arg_display_mode" ]]; then
+              echo "Display mode activated: $arg_display_mode"
+            else
+              echo "Display mode $arg_display_mode not supported yet"
+              exit 0
+            fi
+            ;;
+    l | language )
+            needs_arg
+            display_language="$OPTARG"
+            language_supported=( "fr" "en" )
+            echo
+            if [[ "${language_supported[@]}" =~ "$display_language" ]]; then
+              echo "Language selected : $display_language"
+            else
+              echo "Language $display_language not supported yet"
+              exit 0
+            fi
+            ;;
+    e | edit-config )
+            eval next_arg=\${$OPTIND}
+            if [[ "$next_arg" == "" ]]; then
+              echo -e "\033[1m$script_name_cap - config editor\033[0m"
+              echo ""
+              echo "No editor specified, using default (nano)"
+              nano "$script_conf"
+              exit 0
+            else
+              echo -e "\033[1m$script_name_cap - config editor\033[0m"
+              echo ""
+              if command -v $next_arg ; then
+                echo "Editing config with: $next_arg"
+                $next_arg "$script_conf"
+              else
+                echo "There is no software called \"$next_arg\" installed"
+              fi
+              exit 0
+            fi
+            ;;
+    s | status )
+            echo -e "\033[1m$script_name_cap - status (cron)\033[0m"
+            echo ""
+            eval next_arg=\${$OPTIND}
+            if [[ "$next_arg" == @(|status) ]]; then
+              echo "Checking scheduler status..."
+              crontab -l > $HOME/my_old_cron.txt
+              cron_check=`cat $HOME/my_old_cron.txt | grep $script_name`
+              if [[ "$cron_check" != "" ]]; then
+                echo "- script was added in the cron"
+                cron_status=`cat $HOME/my_old_cron.txt | grep $script_name | grep "^#"`
+                if [[ "$cron_status" == "" ]]; then
+                  echo "- script is currently enabled"
+                else
+                  echo "- script is currently disabled"
+                fi
+              else
+                echo "- script wasn't added in the cron"
+              fi
+            elif [[ "$next_arg" == "enable" ]]; then
+              echo "Enabling the script in the cron"
+              crontab -l > $HOME/my_old_cron.txt
+              safety_check=`cat $HOME/my_old_cron.txt | grep $script_name | grep "^#"`
+              if [[ "$safety_check" != "" ]]; then
+                cat $HOME/my_old_cron.txt | grep $script_name | sed  's/^#//' > $HOME/my_new_cron.txt
+                crontab $HOME/my_new_cron.txt
+              else
+                echo "Script is already enabled"
+              fi
+            elif [[ "$next_arg" == "disable" ]]; then
+              echo "Disabling the script in the cron"
+              crontab -l > $HOME/my_old_cron.txt
+              safety_check=`cat $HOME/my_old_cron.txt | grep $script_name | grep "^#"`
+              if [[ "$safety_check" == "" ]]; then
+                cat $HOME/my_old_cron.txt | grep $script_name | sed 's/^/#/' > $HOME/my_new_cron.txt
+                crontab $HOME/my_new_cron.txt
+              else
+                echo "Script is already disabled"
+              fi
+            fi
+            rm $HOME/my_old_cron.txt 2>/dev/null
+            rm $HOME/my_new_cron.txt 2>/dev/null
+            exit 0
+            ;;
+    ??* )          die "Illegal option --$OPT" ;;  # bad long option
+    ? )            exit 2 ;;  # bad short option (error reported via getopts)
+  esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+
+
 #######################
 ## Script configuration
 if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
@@ -83,15 +289,15 @@ y=`echo $1 | awk '{ print $3}'`
 ## resolution_fullhd="1920 x 1080" ## (x) 27% 1401 / (y) 27% donc 788
 ## resolution_hd="1280 x 720"      ## (x) 27% 934  / (y) 27% donc 525
 ## resolution_dvd="720 × 576"      ## (x) 27% 525  / (y) 27% donc 420
-if [[ "$x" -ge "2803" ]] && [[ "$y" -ge "1577" ]]; then
+if [[ "$x" -ge "2561" ]] && [[ "$y" -ge "1577" ]]; then
   echo "4K"
-elif [[ "$x" -ge "1868" ]] && [[ "$y" -ge "1051" ]]; then
+elif [[ "$x" -ge "1921" ]] && [[ "$y" -ge "1051" ]]; then
   echo "QHD"
-elif [[ "$x" -ge "1401" ]] && [[ "$y" -ge "788" ]]; then
+elif [[ "$x" -ge "1281" ]] && [[ "$y" -ge "788" ]]; then
   echo "Full_HD"
-elif [[ "$x" -ge "934" ]] && [[ "$y" -ge "525" ]]; then
+elif [[ "$x" -ge "721" ]] && [[ "$y" -ge "525" ]]; then
   echo "HD"
-elif [[ "$x" -ge "525" ]] && [[ "$y" -ge "420" ]]; then
+elif [[ "$x" -ge "641" ]] && [[ "$y" -ge "420" ]]; then
   echo "DVD"
 else
   echo "\e[41m! Too low !\e[0m"
