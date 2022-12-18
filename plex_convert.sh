@@ -591,7 +591,18 @@ if [[ "$processing" != "no" ]]; then
     HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
     time2=`date +%s`
     duration=$(($time2-$time1))
-    echo -e "$ui_tag_ok Conversion completed in $(date -d@$duration -u +%H:%M:%S)..."
+    echo -e "$ui_tag_encoding Conversion completed in $(date -d@$duration -u +%H:%M:%S)..."
+    file_size_before=`stat -c%s "$file" | numfmt --to=iec-i --suffix=B --format="%.2f"`
+    file_size_after=`stat -c%s "$temp_target" | numfmt --to=iec-i --suffix=B --format="%.2f"`
+    echo -e "$ui_tag_ok Files size: $file_size_before \u279F $file_size_after"
+    file_duration=`mediainfo --Inform="Video;%Duration/String3%" "$temp_target"`
+    if [[ "$media_duration" == "$file_duration" ]]; then
+      echo -e "$ui_tag_ok Medias durations match: $media_duration \u279F $file_duration"
+    else
+      echo -e "$ui_tag_ok Durations mismatch: $media_duration \u279F $file_duration"
+      echo -e "$ui_tag_bad Sending to error folder"
+
+    fi
   else
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
