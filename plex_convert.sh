@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+#######################
 ## Generating variables for script
 script_name=$(basename $0 | cut -d'.' -f1)
 script_name_cap=${script_name^^}
