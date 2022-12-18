@@ -321,6 +321,11 @@ function encoding_loading() {
   mon_printf="\r                                                                             "
   while kill -0 "$pid" 2>/dev/null; do
     progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
+    time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
+    sed -i '/plex_convert_percent/d' $home_temp/conky-nas.handbrake
+    sed -i '/plex_convert_time_left/d' $home_temp/conky-nas.handbrake
+    echo "plex_convert_percent=\"$progress\"" >> $home_temp/conky-nas.handbrake
+    echo "plex_convert_time_left=\"$time_left\"" >> $home_temp/conky-nas.handbrake
     i=$(((i + $charwidth) % ${#spin}))
     printf "$mon_printf"
     printf "\r[\e[7m \u238B \e[0m] [$progress \u0025] %"$lengh_spinner2"s %s" "$mui_encoding_spinner" "${spin2:$i:$charwidth}"
@@ -593,6 +598,12 @@ if [[ "$processing" != "no" ]]; then
     mkdir -p "$temp_folder"
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
+## Conky-nas intégration
+    echo "plex_convert_title=\"$media_name\"" > $home_temp/conky-nas.handbrake
+    echo "plex_convert_filename=\"$media_filename\"" >> $home_temp/conky-nas.handbrake
+    echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $home_temp/conky-nas.handbrake
+    echo "plex_convert_format=\"$media_standard_resolution\"" >> $home_temp/conky-nas.handbrake
+    echo "plex_convert_duration=\"$media_duration\"" >> $home_temp/conky-nas.handbrake
     echo -e "$ui_tag_encoding Sending the file to HandBrake..."
     time1=`date +%s`
     HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
@@ -613,6 +624,7 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
 fi
+rm $home_temp/conky-nas.handbrake
 done
 
 rm $home_temp/filebot_conf.conf
