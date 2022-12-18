@@ -2,6 +2,22 @@
 
 
 #######################
+## Check if this script is running
+check_dupe=$(ps -ef | grep "$0" | grep -v grep | wc -l | xargs)
+check_cron=`echo $-`
+if [[ "$check_cron" =~ "i" ]]; then
+  process_number="2"
+else
+  process_number="3"
+fi
+if [[ "$check_dupe" > "$process_number" ]]; then
+  echo "Script already running ($check_dupe)"
+  date
+  exit 1
+fi
+
+
+#######################
 ## Generating variables for script
 script_name=$(basename $0 | cut -d'.' -f1)
 script_name_cap=${script_name^^}
