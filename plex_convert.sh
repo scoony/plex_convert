@@ -322,8 +322,8 @@ function encoding_loading() {
   while kill -0 "$pid" 2>/dev/null; do
     progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
     time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
-    sed -i '/plex_convert_percent/d' $home_temp/conky-nas.handbrake
-    sed -i '/plex_convert_time_left/d' $home_temp/conky-nas.handbrake
+    sed -i '/plex_convert_percent/d' $home_temp/conky-nas.handbrake 2>/dev/null
+    sed -i '/plex_convert_time_left/d' $home_temp/conky-nas.handbrake 2>/dev/null
     echo "plex_convert_percent=\"$progress\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_time_left=\"$time_left\"" >> $home_temp/conky-nas.handbrake
     i=$(((i + $charwidth) % ${#spin}))
