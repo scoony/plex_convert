@@ -228,14 +228,19 @@ shift $((OPTIND-1)) # remove parsed options and args from $@ list
 ## Script configuration
 if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
   my_settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo ffmpeg_check"
+  mkdir -p "$HOME/.config/plex_convert"
+  touch "$HOME/.config/plex_convert/plex_convert.conf"
   my_config_file=`cat "$HOME/.config/plex_convert/plex_convert.conf"`
   for script_variable in $my_settings_variables ; do
     if [[ ! "$my_config_file" =~ "$script_variable" ]]; then
       echo $script_variable"=\"\"" >> $HOME/.config/plex_convert/plex_convert.conf
-      echo "... edit your configuration"
-      exit 0
+    edit_conf="1"
     fi
   done
+  if [[ "$edit_conf" == "1" ]]; then
+    echo "... edit your configuration"
+    exit 0
+  fi
 else
   source "$HOME/.config/plex_convert/plex_convert.conf"
 fi
@@ -420,7 +425,9 @@ echo ""
 
 #######################
 ## Getting the files
-find "$convert_folder" -type f -iname '*[avi|mp4|mkv]' > $home_temp/medias.log
+find "$convert_folder" -type f -iname '*[avi|mp4|mkv]' > $home_temp/medias_temp.log
+sort $home_temp/medias_temp.log > $home_temp/medias.log
+rm $home_temp/medias_temp.log
 my_files=()
 while IFS= read -r -d $'\n'; do
 my_files+=("$REPLY")
@@ -601,7 +608,6 @@ if [[ "$processing" != "no" ]]; then
     else
       echo -e "$ui_tag_ok Durations mismatch: $media_duration \u279F $file_duration"
       echo -e "$ui_tag_bad Sending to error folder"
-
     fi
   else
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
