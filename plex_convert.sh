@@ -366,6 +366,29 @@ echo ""
 
 
 #######################
+## Checking / Downloading encoder profiles
+section_title="Checking HandBrake presets"
+printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
+for profile in $(curl -s -m 3 "https://raw.githubusercontent.com/scoony/plex_convert/main/Profiles/.content") ; do
+  profile_remote=`echo "https://raw.githubusercontent.com/scoony/plex_convert/main/Profiles/$profile"`
+  profile_local=`echo "$home_temp/Profiles/$profile"`
+  if curl -m 2 --head --silent --fail "$profile_remote" 2>/dev/null >/dev/null; then
+    md5_remote_profile=`curl -s -m 3 "$profile_remote" | md5sum | cut -f1 -d" "`
+    md5_local_profile=`md5sum "$profile_local" 2>/dev/null | cut -f1 -d" " 2>/dev/null`
+    if [[ "$md5_local_profile" != "$md5_remote_profile" ]]; then
+      curl -s -m 3 --create-dir -o "$profile_local" "$profile_remote"
+      echo -e "$ui_tag_ok Preset updated: $profile"
+    else
+      echo -e "$ui_tag_ok Preset up to date: $profile"
+    fi
+  else
+    echo -e "$tag_ui_bad Preset is offline ($profile)"
+  fi
+done
+echo ""
+
+
+#######################
 ## Getting the files
 find "$convert_folder" -type f -iname '*[avi|mp4|mkv]' > $home_temp/medias.log
 my_files=()
