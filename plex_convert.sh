@@ -324,8 +324,8 @@ function encoding_loading() {
     time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
     sed -i '/plex_convert_percent/d' $home_temp/conky-nas.handbrake 2>/dev/null
     sed -i '/plex_convert_time_left/d' $home_temp/conky-nas.handbrake 2>/dev/null
-    echo "plex_convert_percent=\"$progress\"" >> $home_temp/conky-nas.handbrake
-    echo "plex_convert_time_left=\"$time_left\"" >> $home_temp/conky-nas.handbrake
+    echo "plex_convert_percent=\"$progress\"" >> $home_temp/conky-nas.handbrake 2>/dev/null
+    echo "plex_convert_time_left=\"$time_left\"" >> $home_temp/conky-nas.handbrake 2>/dev/null
     i=$(((i + $charwidth) % ${#spin}))
     printf "$mon_printf"
     printf "\r[\e[7m \u238B \e[0m] [$progress \u0025] %"$lengh_spinner2"s %s" "$mui_encoding_spinner" "${spin2:$i:$charwidth}"
@@ -507,7 +507,7 @@ processing="yes"
 
 ## Check integrity (ffmpeg)
 if [[ "$ffmpeg_check" == "yes" ]]; then
-  echo -e "$ui_tag_checking Checking file integrity..."
+  echo -e "$ui_tag_checking Integrity check: source file..."
   time1=`date +%s`
   ffmpeg -hide_banner -i "$file" -f null - > $home_temp/ffmpeg_check.log 2>&1 & display_loading $!
   time2=`date +%s`
@@ -619,14 +619,43 @@ if [[ "$processing" != "no" ]]; then
     else
       echo -e "$ui_tag_ok Durations mismatch: $media_duration \u279F $file_duration"
       echo -e "$ui_tag_bad Sending to error folder"
+      conversion_error="1"
+    fi
+    ## Check integrity (ffmpeg)
+    if [[ "$ffmpeg_check" == "yes" ]]; then
+      echo -e "$ui_tag_checking Integrity check: output file..."
+      time1=`date +%s`
+      ffmpeg -hide_banner -i "$temp_target" -f null - > $home_temp/ffmpeg_check.log 2>&1 & display_loading $!
+      time2=`date +%s`
+      duration=$(($time2-$time1))
+      ffmpeg_error=`cat $home_temp/ffmpeg_check.log | grep "error"`
+      rm $home_temp/ffmpeg_check.log
+## Doit paufiner absolument
+      if [[ "$ffmpeg_error" != "" ]]; then
+        echo -e "$ui_tag_bad Error reading the file"
+        echo -e "$ui_tag_bad Skipping this file"
+        conversion_error="1"
+      else
+        echo -e "$ui_tag_ok File checked, no error ("$duration"s)"
+      fi
+    fi
+    if [[ "$conversion_error" == "1" ]]; then
+      echo -e "$ui_tag_bad Moving the file to the error folder"
+      mv "$temp_target" "$error_folder"
+    else
+      echo -e "$ui_tag_ok File converted without error"
+      echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
+      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_filename`
+      mv "$temp_target" "$task_complete"
     fi
   else
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
 fi
-rm $home_temp/conky-nas.handbrake
+rm "$home_temp/conky-nas.handbrake"
+rm "$home_temp/handbrake_process.txt"
 done
 
-rm $home_temp/filebot_conf.conf
-rm $home_temp/filebot_conf_full.conf
+rm "$home_temp/filebot_conf.conf"
+rm "$home_temp/filebot_conf_full.conf"
 
