@@ -276,6 +276,31 @@ ui_tag_section="\e[44m[\u2263\u2263\u2263]\e[0m \e[44m \e[1m %-*s  \e[0m \e[44m 
 
 
 #######################
+## Push feature
+push-message() {
+  push_title=$1
+  push_content=$2
+  push_priority=$3
+  if [[ "$push_priority" == "" ]]; then
+    push_priority="-1"
+  fi
+  for user in {1..10}; do
+    target=`eval echo "\\$target_"$user`
+    if [ -n "$target" ]; then
+      curl -s \
+        --form-string "token=$token_app" \
+        --form-string "user=$target" \
+        --form-string "title=$push_title" \
+        --form-string "message=$push_content" \
+        --form-string "html=1" \
+        --form-string "priority=$push_priority" \
+        https://api.pushover.net/1/messages.json > /dev/null
+    fi
+  done
+}
+
+
+#######################
 ## Loading spinner
 function display_loading() {
   pid="$*"
@@ -608,18 +633,19 @@ if [[ "$processing" != "no" ]]; then
     time1=`date +%s`
     HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
     time2=`date +%s`
-    duration=$(($time2-$time1))
-    echo -e "$ui_tag_encoding Conversion completed in $(date -d@$duration -u +%H:%M:%S)..."
+    duration_handbrake=$(($time2-$time1))
+    echo -e "$ui_tag_encoding Conversion completed in $(date -d@$duration_handbrake -u +%H:%M:%S)"
     file_size_before=`stat -c%s "$file" | numfmt --to=iec-i --suffix=B --format="%.2f"`
     file_size_after=`stat -c%s "$temp_target" | numfmt --to=iec-i --suffix=B --format="%.2f"`
     echo -e "$ui_tag_ok Files size: $file_size_before \u279F $file_size_after"
     file_duration=`mediainfo --Inform="Video;%Duration/String3%" "$temp_target"`
+    conversion_error="0"
     if [[ "$media_duration" == "$file_duration" ]]; then
       echo -e "$ui_tag_ok Medias durations match: $media_duration \u279F $file_duration"
     else
-      echo -e "$ui_tag_ok Durations mismatch: $media_duration \u279F $file_duration"
-      echo -e "$ui_tag_bad Sending to error folder"
+      echo -e "$ui_tag_bad Durations mismatch: $media_duration \u279F $file_duration"
       conversion_error="1"
+      error_status="[duration]"
     fi
     ## Check integrity (ffmpeg)
     if [[ "$ffmpeg_check" == "yes" ]]; then
@@ -635,6 +661,7 @@ if [[ "$processing" != "no" ]]; then
         echo -e "$ui_tag_bad Error reading the file"
         echo -e "$ui_tag_bad Skipping this file"
         conversion_error="1"
+        error_status="[ffmpeg]"
       else
         echo -e "$ui_tag_ok File checked, no error ("$duration"s)"
       fi
@@ -642,11 +669,17 @@ if [[ "$processing" != "no" ]]; then
     if [[ "$conversion_error" == "1" ]]; then
       echo -e "$ui_tag_bad Moving the file to the error folder"
       mv "$temp_target" "$error_folder"
+      mv "$file" "$error_folder"
     else
       echo -e "$ui_tag_ok File converted without error"
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
       task_complete=` echo $download_folder_location"/"$target_folder"/"$media_filename`
       mv "$temp_target" "$task_complete"
+      echo -e "$ui_tag_ok Sending source file to trash"
+      trash-put "$file"
+      my_push_message="[ <b>CONVERSION COMPLETE</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec :</b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile\n<b>Encoding time: </b>$(date -d@$duration_handbrake -u +%H:%M:%S)\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
+      my_message=` echo -e "$my_push_message"`
+      push-message "Plex Convert" "$my_message"
     fi
   else
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
