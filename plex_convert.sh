@@ -731,8 +731,9 @@ if [[ "$processing" != "no" ]]; then
       echo "Error: $error_status" >> $home_temp/logs/$folder_date/$timestamp-error.log
     else
       echo -e "$ui_tag_ok File converted without error"
-      echo -e "$ui_tag_write Adding Metadata to the media..."
-      exiftool -Author="./plex_convert.sh" "$temp_target" 2>/dev/null & display_loading $!
+## Writing mkv not supported by exiftool
+##      echo -e "$ui_tag_write Adding Metadata to the media..."
+##      exiftool -Author="./plex_convert.sh" "$temp_target" 2>/dev/null & display_loading $!
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
       task_complete=` echo $download_folder_location"/"$target_folder"/"$media_filename`
       mv "$temp_target" "$task_complete"
