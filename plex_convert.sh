@@ -497,7 +497,8 @@ echo ""
 
 #######################
 ## Getting the files
-find "$convert_folder" -type f -iname '*[mkv|avi|mp4|m4v|mpg|divx|ts|ogm]' > $home_temp/medias_temp.log
+## find "$convert_folder" -type f -iname '*[.mkv$|.avi$|.mp4$|.m4v$|.mpg$|.divx$|.ts$|.ogm$]' > $home_temp/medias_temp.log ## Charge tout
+find "$convert_folder" -type f -iregex '.*\.\(mkv$\|avi$\|mp4$\|m4v$\|mpg$\|divx$\|ts$\|ogm$\)' > $home_temp/medias_temp.log
 sort $home_temp/medias_temp.log > $home_temp/medias.log
 rm $home_temp/medias_temp.log
 my_files=()
@@ -661,6 +662,8 @@ if [[ "$processing" != "no" ]]; then
 ##  echo "DEBUG: $my_preset_file"
   if [[ -f "$my_preset_file" ]]; then
     echo -e "$ui_tag_ok Handbrake preset found ("$handbrake_profile".json)"
+    download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+    temp_folder=`echo $download_folder_location"/"$script_name"_temp"`
     mkdir -p "$temp_folder"
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
