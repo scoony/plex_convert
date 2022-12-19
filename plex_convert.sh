@@ -279,6 +279,7 @@ mkdir -p "$error_folder" 2>/dev/null
 
 #######################
 ## UI tags
+ui_tag_write="[\e[43m \u270E \e[0m]"
 ui_tag_checking="[\e[43m \u003F \e[0m]"
 ui_tag_encoding="[\e[7m \u238B \e[0m]"
 ui_tag_ok="[\e[42m \u2713 \e[0m]"
@@ -404,9 +405,9 @@ fi
 ## Dependencies
 section_title="Checking dependencies"
 printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
-my_dependencies="filebot curl awk HandBrakeCLI"
+my_dependencies="filebot curl awk HandBrakeCLI exiftool"
 for dependency in $my_dependencies ; do
-  if $dependency -help > /dev/null 2>/dev/null ; then
+  if command -v $dependency > /dev/null 2>/dev/null ; then
     echo -e "$ui_tag_ok Dependency: $dependency"
   else
     echo -e "$ui_tag_bad Dependency missing: $dependency"
@@ -725,6 +726,8 @@ if [[ "$processing" != "no" ]]; then
       echo "Error: $error_status" >> $home_temp/logs/$folder_date/$timestamp-error.log
     else
       echo -e "$ui_tag_ok File converted without error"
+      echo -e "$ui_tag_write Adding Metadata to the media..."
+      exiftool -Author="./plex_convert.sh" "$temp_target" 2>/dev/null & display_loading $!
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
       task_complete=` echo $download_folder_location"/"$target_folder"/"$media_filename`
       mv "$temp_target" "$task_complete"
