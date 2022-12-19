@@ -733,7 +733,7 @@ if [[ "$convert_folder" != "" ]]; then
   echo -e "$ui_tag_ok Removing empty folders..."
   find "$convert_folder" -not -path "$folder_path" -type d -empty -delete & display_loading $!
   if [ -z "$(ls -A "$temp_folder")" ]; then
-    rm "$temp_folder"
+    rm -r "$temp_folder"
     echo -e "$ui_tag_ok Temporary folder removed"
   fi
 fi
