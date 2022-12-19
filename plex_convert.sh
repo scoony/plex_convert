@@ -237,7 +237,6 @@ if [[ ! -d "$HOME/.config/plex_convert/logs" ]]; then
 fi
 
 
-
 #######################
 ## Script configuration
 if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
@@ -469,7 +468,7 @@ echo ""
 
 #######################
 ## Getting the files
-find "$convert_folder" -type f -iname '*[avi|mp4|mkv]' > $home_temp/medias_temp.log
+find "$convert_folder" -type f -iname '*[mkv|avi|mp4|m4v|mpg|divx|ts|ogm]' > $home_temp/medias_temp.log
 sort $home_temp/medias_temp.log > $home_temp/medias.log
 rm $home_temp/medias_temp.log
 my_files=()
@@ -633,7 +632,6 @@ if [[ "$processing" != "no" ]]; then
 ##  echo "DEBUG: $my_preset_file"
   if [[ -f "$my_preset_file" ]]; then
     echo -e "$ui_tag_ok Handbrake preset found ("$handbrake_profile".json)"
-    temp_folder=`echo $download_folder_location"/"$script_name"_temp"`
     mkdir -p "$temp_folder"
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
@@ -719,8 +717,9 @@ fi
 rm "$home_temp/conky-nas.handbrake"
 rm "$home_temp/handbrake_process.txt"
 done
-rm "$home_temp/filebot_conf.conf"
-rm "$home_temp/filebot_conf_full.conf"
+if [[ "${my_files[@]}" == "" ]]; then
+  echo -e "$ui_tag_ok Nothing was found"
+fi
 echo ""
 
 
@@ -731,9 +730,21 @@ if [[ "$convert_folder" != "" ]]; then
   echo -e "$ui_tag_ok Removing everything except medias..."
   find "$convert_folder" -type f -not -iregex '.*\.\(mkv\|avi\|mp4\|m4v\|mpg\|divx\|ts\|ogm\)' -delete & display_loading $!
   echo -e "$ui_tag_ok Removing empty folders..."
-  find "$convert_folder" -not -path "$folder_path" -type d -empty -delete & display_loading $!
-  if [ -z "$(ls -A "$temp_folder")" ]; then
+  find "$convert_folder" -not -path "$convert_folder" -type d -empty -delete & display_loading $!
+  if [[ "$temp_folder" == "" ]]; then
+    download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+    temp_folder=`echo $download_folder_location"/"$script_name"_temp"`
+  fi
+  if [[ -d "$temp_folder" ]] && [[ "$(ls -A "$temp_folder" 2>/dev/null)" == "" ]]; then
+    echo -e "$ui_tag_ok Empty temporary folder detected: $temp_folder"
     rm -r "$temp_folder"
     echo -e "$ui_tag_ok Temporary folder removed"
   fi
+   if [[ -d "$error_folder" ]] && [[ "$(ls -A "$error_folder" 2>/dev/null)" == "" ]]; then
+    echo -e "$ui_tag_ok Empty error folder detected: $error_folder"
+    rm -r "$error_folder"
+    echo -e "$ui_tag_ok Error folder removed"
+  fi
 fi
+rm "$home_temp/filebot_conf.conf"
+rm "$home_temp/filebot_conf_full.conf"
