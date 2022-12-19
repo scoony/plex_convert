@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+
 #######################
 ## Check if this script is running
 check_dupe=$(ps -ef | grep "$0" | grep -v grep | wc -l | xargs)
@@ -101,7 +102,7 @@ while getopts eushf:cm:l:-: OPT; do
                 echo "MD5 remote : "$md5_remote
                 if [[ "$md5_local" != "$md5_remote" ]]; then
                   echo "A new version of the script is available... downloading"
-##                  curl -s -m 3 --create-dir -o "$this_script" "$script_remote"
+                  curl -s -m 3 --create-dir -o "$this_script" "$script_remote"
                   echo "Update completed... exit"
                 else
                   echo "The script is up to date... exit"
