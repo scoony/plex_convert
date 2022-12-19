@@ -225,6 +225,20 @@ shift $((OPTIND-1)) # remove parsed options and args from $@ list
 
 
 #######################
+## Required for logs and conf
+if [[ "$log_folder" == "" ]]; then
+  log_folder="$HOME/.config/plex_convert"
+fi
+if [[ ! -d "$HOME/.config/plex_convert" ]]; then
+  mkdir -p "$HOME/.config/plex_convert"
+fi
+if [[ ! -d "$HOME/.config/plex_convert/logs" ]]; then
+  mkdir -p "$HOME/.config/plex_convert/logs"
+fi
+
+
+
+#######################
 ## Script configuration
 if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
   my_settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo ffmpeg_check"
@@ -507,13 +521,13 @@ fi
 media_filename=` basename "$file"`
 media_genres=`echo "$media_name_raw" | grep -oP '(?<=\[).*(?=\]\/)'`
 rm $home_temp/media-filebot.log
-echo -e "$ui_tag_ok Filename: "$media_filename
+echo -e "$ui_tag_ok Filename: "$(echo $media_filename | sed -e 's/^\[[^][]*\] //g')
 echo -e "$ui_tag_ok Type: "$(echo $media_type | sed 's/s$//')
 echo -e "$ui_tag_ok Real name: "$media_name
 echo -e "$ui_tag_ok Genres: "$media_genres
 echo -e "$ui_tag_ok Format: "$media_format
 echo -e "$ui_tag_ok Bit rate: "$(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)
-echo -e "$ui_tag_ok Resolution: $media_standard_resolution ( $media_resolution )"
+echo -e "$ui_tag_ok Resolution: $media_standard_resolution ($media_resolution)"
 echo -e "$ui_tag_ok Duration: "$media_duration
 no_language_info="0"
 for i in {0..10} ; do
@@ -645,7 +659,7 @@ if [[ "$processing" != "no" ]]; then
     else
       echo -e "$ui_tag_bad Durations mismatch: $media_duration \u279F $file_duration"
       conversion_error="1"
-      error_status="[duration]"
+      error_status="[DURATION] $media_duration \u279F $file_duration"
     fi
     ## Check integrity (ffmpeg)
     if [[ "$ffmpeg_check" == "yes" ]]; then
@@ -661,7 +675,7 @@ if [[ "$processing" != "no" ]]; then
         echo -e "$ui_tag_bad Error reading the file"
         echo -e "$ui_tag_bad Skipping this file"
         conversion_error="1"
-        error_status="[ffmpeg]"
+        error_status="[FFMPEG] Error while reading the file"
       else
         echo -e "$ui_tag_ok File checked, no error ("$duration"s)"
       fi
@@ -670,6 +684,9 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_bad Moving the file to the error folder"
       mv "$temp_target" "$error_folder"
       mv "$file" "$error_folder"
+      my_push_message="[ <b>CONVERSION ERROR</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Error: </b>$error_status\n\n<b>Sent to: </b>$error_folder"
+      my_message=` echo -e "$my_push_message"`
+      push-message "Plex Convert" "$my_message" "1"
     else
       echo -e "$ui_tag_ok File converted without error"
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
@@ -677,9 +694,23 @@ if [[ "$processing" != "no" ]]; then
       mv "$temp_target" "$task_complete"
       echo -e "$ui_tag_ok Sending source file to trash"
       trash-put "$file"
-      my_push_message="[ <b>CONVERSION COMPLETE</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec :</b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile\n<b>Encoding time: </b>$(date -d@$duration_handbrake -u +%H:%M:%S)\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
-      my_message=` echo -e "$my_push_message"`
-      push-message "Plex Convert" "$my_message"
+      if [[ "$push_for_complete" == "yes" ]]; then
+        my_push_message="[ <b>CONVERSION COMPLETE</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec :</b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile (encoded in $(date -d@$duration_handbrake -u +%H:%M:%S))\n<b>Sizes: </b>$file_size_before \u279F $file_size_after\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
+        my_message=` echo -e "$my_push_message"`
+        push-message "Plex Convert" "$my_message"
+      fi
+      ## Generating log
+      folder_date=`date +%Y-%m-%d`
+      mkdir -p "$home_temp/logs/$folder_date"
+      timestamp=`date +%H-%M-%S`
+      echo "Filename: $media_filename" > $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Type: $media_type" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Format: $media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Real name: $media_name" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Source size: $file_size_before" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Target size: $file_size_after" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Encoding time: $(date -d@$duration_handbrake -u +%H:%M:%S)" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
+      echo "Destination: $download_folder_location/$target_folder" >> $home_temp/logs/$folder_date/$timestamp-conversion.log
     fi
   else
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
@@ -688,7 +719,21 @@ fi
 rm "$home_temp/conky-nas.handbrake"
 rm "$home_temp/handbrake_process.txt"
 done
-
 rm "$home_temp/filebot_conf.conf"
 rm "$home_temp/filebot_conf_full.conf"
+echo ""
 
+
+## Cleaning plex_convert folder
+if [[ "$convert_folder" != "" ]]; then
+  section_title="Cleaning folders"
+  printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
+  echo -e "$ui_tag_ok Removing everything except medias..."
+  find "$convert_folder" -type f -not -iregex '.*\.\(mkv\|avi\|mp4\|m4v\|mpg\|divx\|ts\|ogm\)' -delete & display_loading $!
+  echo -e "$ui_tag_ok Removing empty folders..."
+  find "$convert_folder" -not -path "$folder_path" -type d -empty -delete & display_loading $!
+  if [ -z "$(ls -A "$temp_folder")" ]; then
+    rm "$temp_folder"
+    echo -e "$ui_tag_ok Temporary folder removed"
+  fi
+fi
