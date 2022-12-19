@@ -438,6 +438,32 @@ if [[ "$check_root_cron" != "" ]]; then
       echo -e "$ui_tag_bad Critical error... exit"
       exit 0
     fi
+  else
+    plex_sort_root="0"
+  fi
+else
+  plex_sort_root="0"
+fi
+if [[ "$plex_sort_root" = "0" ]]; then
+  echo "Plex Sort is not used by Cron"
+  check_cron=`crontab -l 2>/dev/null | grep "plex_sort.sh"`
+  if [[ "$check_cron" != "" ]]; then
+    check_status=`crontab -l 2>/dev/null | grep "plex_sort.sh" | grep "^#"`
+    if [[ "$check_status" == "" ]]; then
+      plex_sort_config=`locate "plex_sort.conf" 2>/dev/null`
+      echo -e "$ui_tag_ok Plex_Sort is currently activated in the user account"
+      if [[ "$plex_sort_config" != "" ]]; then
+        echo -e "$ui_tag_ok Configuration found: $plex_sort_config"
+        cat "$plex_sort_config" 2>/dev/null > $home_temp/filebot_conf_full.conf
+        cat $home_temp/filebot_conf_full.conf | grep -i "filebot" > $home_temp/filebot_conf.conf
+        source "$home_temp/filebot_conf.conf"
+        echo -e "$(cat $home_temp/filebot_conf.conf | sed "s/^/$ui_tag_ok_sed Import: /g" | sed 's/##.*$//g' )"
+      else
+        echo -e "$ui_tag_bad Unable to find Plex_Sort configuration"
+        echo -e "$ui_tag_bad Critical error... exit"
+        exit 0
+      fi
+    fi
   fi
 fi
 echo ""
@@ -685,6 +711,18 @@ if [[ "$processing" != "no" ]]; then
       my_push_message="[ <b>CONVERSION ERROR</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Error: </b>$error_status\n\n<b>Sent to: </b>$error_folder"
       my_message=` echo -e "$my_push_message"`
       push-message "Plex Convert" "$my_message" "1"
+      ## Generating log
+      folder_date=`date +%Y-%m-%d`
+      mkdir -p "$home_temp/logs/$folder_date"
+      timestamp=`date +%H-%M-%S`
+      echo "Filename: $media_filename" > $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Type: $media_type" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Format: $media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Real name: $media_name" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Source size: $file_size_before" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Target size: $file_size_after" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Encoding time: $(date -d@$duration_handbrake -u +%H:%M:%S)" >> $home_temp/logs/$folder_date/$timestamp-error.log
+      echo "Error: $error_status" >> $home_temp/logs/$folder_date/$timestamp-error.log
     else
       echo -e "$ui_tag_ok File converted without error"
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
