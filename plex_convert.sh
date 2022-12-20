@@ -19,7 +19,7 @@ fi
 
 
 #######################
-## Generating variables for script
+## Generating script variables and basics
 script_name=$(basename $0 | cut -d'.' -f1)
 script_name_cap=${script_name^^}
 script_name_full=$(basename $0)
@@ -27,7 +27,13 @@ script_bin=$0
 script_conf=`echo $HOME"/.config/"$script_name"/"$script_name".conf"`
 script_remote="https://raw.githubusercontent.com/scoony/$script_name/main/$script_name_full"
 script_cron_log=`echo "/var/log/"$script_name".log"`
-
+script_folder="$HOME/.config/$script_name"
+if [[ ! -d "$script_folder" ]]; then
+  mkdir -p "$script_folder"
+fi
+if [[ ! -d "$script_folder/logs" ]]; then
+  mkdir -p "$script_folder/logs"
+fi
 
 #######################
 ## Advanced command arguments
@@ -93,7 +99,6 @@ while getopts eushf:cm:l:-: OPT; do
               echo ""
               this_script=$(realpath -s "$0")
               echo "Script location : "$this_script
-              script_remote="$script_remote"
               if curl -m 2 --head --silent --fail "$script_remote" 2>/dev/null >/dev/null; then
                 echo "Script available online on GitHub "
                 md5_local=`md5sum "$this_script" | cut -f1 -d" " 2>/dev/null`
@@ -227,37 +232,28 @@ shift $((OPTIND-1)) # remove parsed options and args from $@ list
 
 
 #######################
-## Required for logs and conf
-if [[ "$log_folder" == "" ]]; then
-  log_folder="$HOME/.config/plex_convert"
-fi
-if [[ ! -d "$HOME/.config/plex_convert" ]]; then
-  mkdir -p "$HOME/.config/plex_convert"
-fi
-if [[ ! -d "$HOME/.config/plex_convert/logs" ]]; then
-  mkdir -p "$HOME/.config/plex_convert/logs"
-fi
-
-
-#######################
 ## Script configuration
-if [[ ! -f "$HOME/.config/plex_convert/plex_convert.conf" ]]; then
-  my_settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo ffmpeg_check"
-  mkdir -p "$HOME/.config/plex_convert"
-  touch "$HOME/.config/plex_convert/plex_convert.conf"
-  my_config_file=`cat "$HOME/.config/plex_convert/plex_convert.conf"`
-  for script_variable in $my_settings_variables ; do
-    if [[ ! "$my_config_file" =~ "$script_variable" ]]; then
-      echo $script_variable"=\"\"" >> $HOME/.config/plex_convert/plex_convert.conf
+settings_variables="home_temp convert_folder error_folder audio_required profile_4K profile_QHD profile_Full_HD profile_HD profile_DVD profile_Default sudo ffmpeg_check"
+if [[ ! -f "$script_conf" ]]; then
+  touch "$script_conf"
+  for script_variable in $settings_variables ; do
+    echo $script_variable"=\"\"" >> $script_conf
     edit_conf="1"
+  done
+else
+  user_conf=`cat $script_conf`
+  for script_variable in $settings_variables ; do
+    if [[ ! "$user_conf" =~ "$script_variable" ]]; then
+      echo $script_variable"=\"\"" >> $script_conf
+      edit_conf="1"
     fi
   done
-  if [[ "$edit_conf" == "1" ]]; then
-    echo "... edit your configuration"
-    exit 0
-  fi
-else
-  source "$HOME/.config/plex_convert/plex_convert.conf"
+  source "$script_conf"
+fi
+if [[ "$edit_conf" == "1" ]]; then
+  echo "Edit your configuration"
+  echo "Use $script_bin -e"
+  exit 0
 fi
 
 
