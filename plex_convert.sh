@@ -544,6 +544,7 @@ filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFo
 media_type=` cat $home_temp/media-filebot.log | grep "^Rename" | awk '{ print $2 }'`
 media_name_raw=`cat $home_temp/media-filebot.log | grep "^\[TEST\]" | grep -oP '(?<=to \[).*(?=\]$)'`
 media_name=` echo ${media_name_raw##*/} | cut -f 1 -d '.'`
+media_name_complete=${media_name_raw##*/}
 if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]] || [[ "$media_name_raw" == "" ]]; then
   media_name="\e[41m! FileBot can't process this file !\e[0m"
 fi
@@ -668,6 +669,7 @@ if [[ "$processing" != "no" ]]; then
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
 ## Conky-nas intégration
+    echo "plex_convert_status=\"[ $array_current / $array_total ]\""  > $home_temp/conky-nas.handbrake
     echo "plex_convert_title=\"$media_name\"" > $home_temp/conky-nas.handbrake
     echo "plex_convert_filename=\"$media_filename\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $home_temp/conky-nas.handbrake
@@ -735,7 +737,7 @@ if [[ "$processing" != "no" ]]; then
 ##      echo -e "$ui_tag_write Adding Metadata to the media..."
 ##      exiftool -Author="./plex_convert.sh" "$temp_target" 2>/dev/null & display_loading $!
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
-      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_filename`
+      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
       mv "$temp_target" "$task_complete"
       echo -e "$ui_tag_ok Sending source file to trash"
       trash-put "$file"
