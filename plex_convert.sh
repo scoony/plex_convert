@@ -747,8 +747,13 @@ if [[ "$processing" != "no" ]]; then
         mkvpropedit --tags global:"$script_folder/script_tag.xml" "$temp_target" >/dev/null & display_loading $!
       fi
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
-      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
-      mv "$temp_target" "$task_complete"
+      ## Full path for context
+      reproduce_path=` echo "$file" | sed "s|$convert_folder||"`
+      task_complete_raw=` echo $download_folder_location"/"$target_folder""$reproduce_path`
+      task_complete=` dirname $task_complete_raw`
+      mkdir -p "$task_complete"
+##      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
+      mv "$temp_target" "$task_complete_raw"
       echo -e "$ui_tag_ok Sending source file to trash"
       trash-put "$file"
       if [[ "$push_for_complete" == "yes" ]]; then
