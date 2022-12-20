@@ -444,7 +444,7 @@ else
   plex_sort_root="0"
 fi
 if [[ "$plex_sort_root" = "0" ]]; then
-  echo "Plex Sort is not used by Root"
+  echo "$ui_tag_ok Plex Sort is activated in an user account"
   check_cron=`crontab -l 2>/dev/null | grep "plex_sort.sh"`
   if [[ "$check_cron" != "" ]]; then
     check_status=`crontab -l 2>/dev/null | grep "plex_sort.sh" | grep "^#"`
