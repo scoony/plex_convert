@@ -668,7 +668,7 @@ if [[ "$processing" != "no" ]]; then
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
 ## Conky-nas intégration
     echo "plex_convert_status=\"[ $array_current / $array_total ]\""  > $home_temp/conky-nas.handbrake
-    echo "plex_convert_title=\"$media_name\"" > $home_temp/conky-nas.handbrake
+    echo "plex_convert_title=\"$media_name\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_filename=\"$media_filename\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_format=\"$media_standard_resolution\"" >> $home_temp/conky-nas.handbrake
