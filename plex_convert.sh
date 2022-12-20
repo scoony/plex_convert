@@ -444,7 +444,7 @@ else
   plex_sort_root="0"
 fi
 if [[ "$plex_sort_root" = "0" ]]; then
-  echo "$ui_tag_ok Plex Sort is activated in an user account"
+  echo -e "$ui_tag_ok Plex Sort is activated in an user account"
   check_cron=`crontab -l 2>/dev/null | grep "plex_sort.sh"`
   if [[ "$check_cron" != "" ]]; then
     check_status=`crontab -l 2>/dev/null | grep "plex_sort.sh" | grep "^#"`
@@ -744,7 +744,7 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_ok File converted without error"
       if [[ -f "$script_folder/script_tag.xml" ]]; then
         echo -e "$ui_tag_write Adding Metadata to the media..."
-        mkvpropedit --tags global:"$script_folder/script_tag.xml" "$temp_target" & display_loading $!
+        mkvpropedit --tags global:"$script_folder/script_tag.xml" "$temp_target" >/dev/null & display_loading $!
       fi
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
       task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
