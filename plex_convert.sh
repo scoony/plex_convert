@@ -35,6 +35,7 @@ if [[ ! -d "$script_folder/logs" ]]; then
   mkdir -p "$script_folder/logs"
 fi
 
+
 #######################
 ## Advanced command arguments
 die() { echo "$*" >&2; exit 2; }  # complain to STDERR and exit with error
@@ -270,9 +271,8 @@ echo ""
 
 #######################
 ## Creating required folders
-mkdir -p "$home_temp" 2>/dev/null
 mkdir -p "$convert_folder" 2>/dev/null
-mkdir -p "$error_folder" 2>/dev/null
+##mkdir -p "$error_folder" 2>/dev/null
 
 
 #######################
@@ -403,7 +403,7 @@ fi
 ## Dependencies
 section_title="Checking dependencies"
 printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
-my_dependencies="filebot curl awk HandBrakeCLI exiftool"
+my_dependencies="filebot curl awk HandBrakeCLI mediainfo mkvpropedit"
 for dependency in $my_dependencies ; do
   if command -v $dependency > /dev/null 2>/dev/null ; then
     echo -e "$ui_tag_ok Dependency: $dependency"
@@ -472,7 +472,7 @@ echo ""
 
 #######################
 ## Checking / Downloading encoder profiles
-section_title="Checking HandBrake presets"
+section_title="Checking HandBrake presets and extras"
 printf "$ui_tag_section" $(lon2 "$section_title") "$section_title"
 for profile in $(curl -s -m 3 "https://raw.githubusercontent.com/scoony/plex_convert/main/Profiles/.content") ; do
   profile_remote=`echo "https://raw.githubusercontent.com/scoony/plex_convert/main/Profiles/$profile"`
@@ -490,6 +490,15 @@ for profile in $(curl -s -m 3 "https://raw.githubusercontent.com/scoony/plex_con
     echo -e "$tag_ui_bad Preset is offline ($profile)"
   fi
 done
+remote_script_tag="https://raw.githubusercontent.com/scoony/plex_convert/main/Extras/script_tag.xml"
+md5_remote_tag=`curl -s -m 3 "$remote_script_tag" | md5sum | cut -f1 -d" "`
+md5_local_tag=`md5sum "$script_folder/script_tag.xml" 2>/dev/null | cut -f1 -d" " 2>/dev/null`
+if [[ "$md5_remote_tag" != "$md5_local_tag" ]]; then
+  curl -s -m 3 --create-dir -o "$script_folder/script_tag.xml" "$remote_script"
+  echo -e "$ui_tag_ok Metadata tag updated"
+else
+  echo -e "$ui_tag_ok Metadata tag up to date"
+fi
 echo ""
 
 
@@ -606,7 +615,8 @@ fi
 ## Moving crap files to error folder
 if [[ "$processing" == "no" ]]; then
   echo -e "$ui_tag_bad Moving file to the error folder"
-##  mv "$file" "$error_folder"
+  mkdir -p "$error_folder"
+  mv "$file" "$error_folder"
 fi
 
 ## Processing
@@ -712,6 +722,7 @@ if [[ "$processing" != "no" ]]; then
     fi
     if [[ "$conversion_error" == "1" ]]; then
       echo -e "$ui_tag_bad Moving the file to the error folder"
+      mkdir -p "$error_folder"
       mv "$temp_target" "$error_folder"
       mv "$file" "$error_folder"
       my_push_message="[ <b>CONVERSION ERROR</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Error: </b>$error_status\n\n<b>Sent to: </b>$error_folder"
@@ -731,9 +742,10 @@ if [[ "$processing" != "no" ]]; then
       echo "Error: $error_status" >> $home_temp/logs/$folder_date/$timestamp-error.log
     else
       echo -e "$ui_tag_ok File converted without error"
-## Writing mkv not supported by exiftool
-##      echo -e "$ui_tag_write Adding Metadata to the media..."
-##      exiftool -Author="./plex_convert.sh" "$temp_target" 2>/dev/null & display_loading $!
+      if [[ -f "$script_folder/script_tag.xml" ]]; then
+        echo -e "$ui_tag_write Adding Metadata to the media..."
+        mkvpropedit --tags global:"$script_folder/script_tag.xml" "$temp_target" & display_loading $!
+      fi
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
       task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
       mv "$temp_target" "$task_complete"
