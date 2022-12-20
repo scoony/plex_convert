@@ -448,7 +448,7 @@ else
   plex_sort_root="0"
 fi
 if [[ "$plex_sort_root" = "0" ]]; then
-  echo "Plex Sort is not used by Cron"
+  echo "Plex Sort is not used by Root"
   check_cron=`crontab -l 2>/dev/null | grep "plex_sort.sh"`
   if [[ "$check_cron" != "" ]]; then
     check_status=`crontab -l 2>/dev/null | grep "plex_sort.sh" | grep "^#"`
@@ -467,6 +467,8 @@ if [[ "$plex_sort_root" = "0" ]]; then
         exit 0
       fi
     fi
+  else
+    echo -e "$ui_tag_bad Plex Sort is not activated"
   fi
 fi
 echo ""
