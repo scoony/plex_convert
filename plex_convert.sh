@@ -494,7 +494,7 @@ remote_script_tag="https://raw.githubusercontent.com/scoony/plex_convert/main/Ex
 md5_remote_tag=`curl -s -m 3 "$remote_script_tag" | md5sum | cut -f1 -d" "`
 md5_local_tag=`md5sum "$script_folder/script_tag.xml" 2>/dev/null | cut -f1 -d" " 2>/dev/null`
 if [[ "$md5_remote_tag" != "$md5_local_tag" ]]; then
-  curl -s -m 3 --create-dir -o "$script_folder/script_tag.xml" "$remote_script"
+  curl -s -m 3 --create-dir -o "$script_folder/script_tag.xml" "$remote_script_tag"
   echo -e "$ui_tag_ok Metadata tag updated"
 else
   echo -e "$ui_tag_ok Metadata tag up to date"
@@ -805,5 +805,5 @@ if [[ "$convert_folder" != "" ]]; then
     echo -e "$ui_tag_ok Error folder removed"
   fi
 fi
-rm "$home_temp/filebot_conf.conf"
-rm "$home_temp/filebot_conf_full.conf"
+rm "$home_temp/filebot_conf.conf" 2>/dev/null
+rm "$home_temp/filebot_conf_full.conf" 2>/dev/null
