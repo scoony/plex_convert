@@ -578,6 +578,7 @@ for i in {0..10} ; do
     echo -e "$ui_tag_ok Audio track #$((i + 1)): $audio_language ($audio_format)"
   fi
 done
+current_process=$array_current
 ((array_current = array_current + 1))
 processing="yes"
 
@@ -677,7 +678,7 @@ if [[ "$processing" != "no" ]]; then
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
 ## Conky-nas intégration
-    echo "plex_convert_status=\"[ $array_current / $array_total ]\""  > $home_temp/conky-nas.handbrake
+    echo "plex_convert_status=\"[ $current_process / $array_total ]\""  > $home_temp/conky-nas.handbrake
     echo "plex_convert_title=\"$media_name\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_filename=\"$media_filename\"" >> $home_temp/conky-nas.handbrake
     echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $home_temp/conky-nas.handbrake
@@ -757,7 +758,12 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_ok Sending source file to trash"
       trash-put "$file"
       if [[ "$push_for_complete" == "yes" ]]; then
-        my_push_message="[ <b>CONVERSION COMPLETE</b> ] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec :</b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile (encoded in $(date -d@$duration_handbrake -u +%H:%M:%S))\n<b>Sizes: </b>$file_size_before \u279F $file_size_after\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
+        if [[ "$array_total" -ge "2" ]]; then
+          current_counter="\u007C $current_process/$array_total "
+        else
+          current_counter=""
+        fi
+        my_push_message="[ <b>CONVERSION COMPLETE</b> $current_counter] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec: </b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile (encoded in $(date -d@$duration_handbrake -u +%H:%M:%S))\n<b>Sizes: </b>$file_size_before \u279F $file_size_after\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
         my_message=` echo -e "$my_push_message"`
         push-message "Plex Convert" "$my_message"
       fi
