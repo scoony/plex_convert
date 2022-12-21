@@ -743,15 +743,23 @@ if [[ "$processing" != "no" ]]; then
       echo "Error: $error_status" >> $home_temp/logs/$folder_date/$timestamp-error.log
     else
       echo -e "$ui_tag_ok File converted without error"
+      ## Tagging file
       if [[ -f "$script_folder/script_tag.xml" ]]; then
         echo -e "$ui_tag_write Adding Metadata to the media..."
         mkvpropedit --tags global:"$script_folder/script_tag.xml" "$temp_target" >/dev/null & display_loading $!
       fi
+      if [[ "$media_type" == "movies" ]]; then
+        tmdb_id=` filebot -script fn:xattr "$file" | grep -oP '(?<=tmdbId\":)[^,]*'`
+        poster_url=` curl -L -s -m 3 "https://www.themoviedb.org/movie/$tmdb_id" | grep "og:image" | head -n1 | grep -oP '(?<=content=\").*(?=\">)'`
+        curl -s -m 3 -o "$home_temp/poster.jpg" "https://image.tmdb.org$poster_url"
+        mkvpropedit "$temp_target" --attachment-name "cover" --attachment-mime-type "image/jpeg" --add-attachment "$home_temp/poster.jpg" >/dev/null
+        rm "$home_temp/poster.jpg"
+      fi
       echo -e "$ui_tag_ok Sending to $download_folder_location/$target_folder"
-      ## Full path for context
+      ## Full path for context (error when empty)
       reproduce_path=` echo "$file" | sed "s|$convert_folder||"`
       task_complete_raw=` echo $download_folder_location"/"$target_folder""$reproduce_path`
-      task_complete=` dirname $task_complete_raw`
+      task_complete=` dirname "$task_complete_raw"`
       mkdir -p "$task_complete"
 ##      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
       mv "$temp_target" "$task_complete_raw"
