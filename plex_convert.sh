@@ -9,7 +9,7 @@ check_cron=`echo $-`
 if [[ "$check_cron" =~ "i" ]]; then
   process_number="2"
 else
-  process_number="3"
+  process_number="2"
 fi
 if [[ "$check_dupe" > "$process_number" ]]; then
   echo "Script already running ($check_dupe)"
@@ -750,6 +750,10 @@ if [[ "$processing" != "no" ]]; then
       fi
       if [[ "$media_type" == "movies" ]]; then
         tmdb_id=` filebot -script fn:xattr "$file" | grep -oP '(?<=tmdbId\":)[^,]*'`
+        if [[ "$tmdb_id" == "" ]]; then
+          filebot_result=` filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{id}/{n} ({y})" --output $home_temp | grep "\[TEST\]" | grep -oP '(?<= to \[)[^\]]*'`
+          tmdb_id=` dirname $filebot_result | sed 's|^/||' | head -n1`
+        fi
         poster_url=` curl -L -s -m 3 "https://www.themoviedb.org/movie/$tmdb_id" | grep "og:image" | head -n1 | grep -oP '(?<=content=\").*(?=\">)'`
         curl -s -m 3 -o "$home_temp/poster.jpg" "https://image.tmdb.org$poster_url"
         mkvpropedit "$temp_target" --attachment-name "cover" --attachment-mime-type "image/jpeg" --add-attachment "$home_temp/poster.jpg" >/dev/null
@@ -760,6 +764,9 @@ if [[ "$processing" != "no" ]]; then
       reproduce_path=` echo "$file" | sed "s|$convert_folder||"`
       task_complete_raw=` echo $download_folder_location"/"$target_folder""$reproduce_path`
       task_complete=` dirname "$task_complete_raw"`
+      echo "DEBUG: REPRODUCE_PATH \"$reproduce_path\""
+      echo "DEBUG: TASK_COMPLETE_RAW \"$task_complete_raw\""
+      echo "DEBUG: TASK_COMPLETE \"$task_complete\""
       mkdir -p "$task_complete"
 ##      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
       mv "$temp_target" "$task_complete_raw"
