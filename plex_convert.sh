@@ -41,7 +41,7 @@ fi
 die() { echo "$*" >&2; exit 2; }  # complain to STDERR and exit with error
 needs_arg() { if [ -z "$OPTARG" ]; then die "No arg for --$OPT option"; fi; }
 
-while getopts eushf:cm:l:-: OPT; do
+while getopts eusht:f:cm:l:-: OPT; do
   # support long options: https://stackoverflow.com/a/28466267/519360
   if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
     OPT="${OPTARG%%=*}"       # extract long option name
@@ -65,6 +65,24 @@ while getopts eushf:cm:l:-: OPT; do
             echo " -e [value*] or --edit-config=[value*]     : edit config file (default: nano)"
             echo " -s [value*] or --status=[value*]          : status/enable/disable the script"
             echo " -f \"[value]\" or --find=\"[value]\"          : find something in the logs"
+            exit 0
+            ;;
+    t | tag )
+            needs_arg
+            arg_display_mode="$OPTARG"
+            echo -e "\033[1m$script_name_cap - manual tagging log\033[0m"
+            echo ""
+            tmdb_id=` filebot -script fn:xattr "$file" | grep -oP '(?<=tmdbId\":)[^,]*'`
+            if [[ "$tmdb_id" == "" ]]; then
+              filebot_result=` filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{id}/{n} ({y})" --output $home_temp | grep "\[TEST\]" | grep -oP '(?<= to \[)[^\]]*'`
+              tmdb_id=` dirname $filebot_result | sed 's|^/||' | head -n1`
+            fi
+              poster_url=` curl -L -s -m 3 "https://www.themoviedb.org/movie/$tmdb_id" | grep "og:image" | head -n1 | grep -oP '(?<=content=\").*(?=\">)'`
+            echo "Poster Link: https://image.tmdb.org"$poster_url
+            curl -s -m 3 -o "$HOME/poster.jpg" "https://image.tmdb.org$poster_url"
+            mkvpropedit "$file" --attachment-name "cover" --attachment-mime-type "image/jpeg" --add-attachment "$HOME/poster.jpg" >/dev/null
+            rm "$HOME/poster.jpg"
+            echo "Poster applied"
             exit 0
             ;;
     f | find )
@@ -552,8 +570,10 @@ media_type=` cat $home_temp/media-filebot.log | grep "^Rename" | awk '{ print $2
 media_name_raw=`cat $home_temp/media-filebot.log | grep "^\[TEST\]" | grep -oP '(?<=to \[).*(?=\]$)'`
 media_name=` echo ${media_name_raw##*/} | cut -f 1 -d '.'`
 media_name_complete=${media_name_raw##*/}
+filebot_unknown=""
 if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]] || [[ "$media_name_raw" == "" ]]; then
   media_name="\e[41m! FileBot can't process this file !\e[0m"
+  filebot_unknown="1"
 fi
 media_filename=` basename "$file"`
 media_genres=`echo "$media_name_raw" | grep -oP '(?<=\[).*(?=\]\/)'`
@@ -655,6 +675,11 @@ if [[ "$processing" != "no" ]]; then
   if [[ "$target_folder" != "" ]]; then
     echo -e "$ui_tag_ok Target folder: $target_folder"
     download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+    if [[ "$filebot_unknown" == "1" ]]; then
+      target_folder="plex_convert_manual"
+      mkdir -p "$download_folder_location/$target_folder"
+      echo -e "$ui_tag_bad File couldn't be identified by FileBot changing destination"
+    fi
     echo -e "$ui_tag_ok Full destination: $download_folder_location/$target_folder"
   else
     ## default
@@ -662,6 +687,11 @@ if [[ "$processing" != "no" ]]; then
       target_folder=`cat "$home_temp/filebot_conf.conf" | grep -i "filebot" | egrep -i "$type_tag" | cut -f 1 -d '='`
       echo -e "$ui_tag_ok Target folder: $target_folder (only one detected, using as default)"
       download_folder_location=`cat $home_temp/filebot_conf_full.conf | grep "download_folder=" | cut -d'"' -f 2`
+      if [[ "$filebot_unknown" == "1" ]]; then
+        target_folder="plex_convert_manual"
+        mkdir -p "$download_folder_location/$target_folder"
+        echo -e "$ui_tag_bad File couldn't be identified by FileBot changing destination"
+      fi
       echo -e "$ui_tag_ok Full destination: $download_folder_location/$target_folder"
     else
       echo -e "$ui_tag_bad Target not found"
@@ -764,9 +794,9 @@ if [[ "$processing" != "no" ]]; then
       reproduce_path=` echo "$file" | sed "s|$convert_folder||"`
       task_complete_raw=` echo $download_folder_location"/"$target_folder""$reproduce_path`
       task_complete=` dirname "$task_complete_raw"`
-      echo "DEBUG: REPRODUCE_PATH \"$reproduce_path\""
-      echo "DEBUG: TASK_COMPLETE_RAW \"$task_complete_raw\""
-      echo "DEBUG: TASK_COMPLETE \"$task_complete\""
+##      echo "DEBUG: REPRODUCE_PATH \"$reproduce_path\""
+##      echo "DEBUG: TASK_COMPLETE_RAW \"$task_complete_raw\""
+##      echo "DEBUG: TASK_COMPLETE \"$task_complete\""
       mkdir -p "$task_complete"
 ##      task_complete=` echo $download_folder_location"/"$target_folder"/"$media_name_complete`
       mv "$temp_target" "$task_complete_raw"
@@ -777,6 +807,9 @@ if [[ "$processing" != "no" ]]; then
           current_counter="\u007C $current_process/$array_total "
         else
           current_counter=""
+        fi
+        if [[ "$media_name" == "\e[41m! FileBot can't process this file !\e[0m" ]]; then
+          media_name="FileBot can't process this file"
         fi
         my_push_message="[ <b>CONVERSION COMPLETE</b> $current_counter] [ <b>$(echo $media_type | sed 's/s$//' | tr '[:lower:]' '[:upper:]')</b> ]\n\n<b>File:</b> $media_filename\n<b>Real name: </b>$media_name\n<b>Codec: </b>$media_format @ $(echo $media_bitrate | numfmt --to=iec --suffix=b/s --format=%.2f 2>/dev/null)\n<b>Resolution: </b>$media_standard_resolution ($media_resolution)\n<b>Preset used: </b>$handbrake_profile (encoded in $(date -d@$duration_handbrake -u +%H:%M:%S))\n<b>Sizes: </b>$file_size_before \u279F $file_size_after\n\n<b>Sent to: </b>$download_folder_location/$target_folder"
         my_message=` echo -e "$my_push_message"`
@@ -799,8 +832,8 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
 fi
-rm "$home_temp/conky-nas.handbrake"
-rm "$home_temp/handbrake_process.txt"
+rm "$home_temp/conky-nas.handbrake" 2>/dev/null
+rm "$home_temp/handbrake_process.txt" 2>/dev/null
 done
 if [[ "${my_files[@]}" == "" ]]; then
   echo -e "$ui_tag_ok Nothing was found"
