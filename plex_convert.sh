@@ -716,7 +716,8 @@ if [[ "$processing" != "no" ]]; then
     else
       conky_file_output=$home_temp
     fi
-    echo "plex_convert_status=\"[ $current_process / $array_total ]\""  > $conky_file_output/conky-nas.handbrake
+    conky_status=` printf "%02d/%02d" $current_process $array_total`
+    echo "plex_convert_status=\"$conky_status\""  > $conky_file_output/conky-nas.handbrake
     echo "plex_convert_title=\"$media_name\"" >> $conky_file_output/conky-nas.handbrake
     echo "plex_convert_filename=\"$media_filename\"" >> $conky_file_output/conky-nas.handbrake
     echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $conky_file_output/conky-nas.handbrake
