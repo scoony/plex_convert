@@ -65,7 +65,7 @@ while getopts eusht:f:cm:l:-: OPT; do
             echo " -e [value*] or --edit-config=[value*]     : edit config file (default: nano)"
             echo " -s [value*] or --status=[value*]          : status/enable/disable the script"
             echo " -f \"[value]\" or --find=\"[value]\"          : find something in the logs"
-            echo " -t \"[value]\" or --tag=\"[value]\"            : apply poster to movie"
+            echo " -t \"[value]\" or --tag=\"[value]\"           : apply poster to movie"
             exit 0
             ;;
     t | tag )
