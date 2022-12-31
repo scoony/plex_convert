@@ -377,10 +377,10 @@ function encoding_loading() {
   while kill -0 "$pid" 2>/dev/null; do
     progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
     time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
-    sed -i '/plex_convert_percent/d' $home_temp/conky-nas.handbrake 2>/dev/null
-    sed -i '/plex_convert_time_left/d' $home_temp/conky-nas.handbrake 2>/dev/null
-    echo "plex_convert_percent=\"$progress\"" >> $home_temp/conky-nas.handbrake 2>/dev/null
-    echo "plex_convert_time_left=\"$time_left\"" >> $home_temp/conky-nas.handbrake 2>/dev/null
+    sed -i '/plex_convert_percent/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
+    sed -i '/plex_convert_time_left/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
+    echo "plex_convert_percent=\"$progress\"" >> $conky_file_output/conky-nas.handbrake 2>/dev/null
+    echo "plex_convert_time_left=\"$time_left\"" >> $conky_file_output/conky-nas.handbrake 2>/dev/null
     i=$(((i + $charwidth) % ${#spin}))
     printf "$mon_printf"
     printf "\r[\e[7m \u238B \e[0m] [$progress \u0025] %"$lengh_spinner2"s %s" "$mui_encoding_spinner" "${spin2:$i:$charwidth}"
@@ -708,12 +708,20 @@ if [[ "$processing" != "no" ]]; then
     temp_target=`echo $temp_folder"/"$media_filename"-part"`
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
 ## Conky-nas intégration
-    echo "plex_convert_status=\"[ $current_process / $array_total ]\""  > $home_temp/conky-nas.handbrake
-    echo "plex_convert_title=\"$media_name\"" >> $home_temp/conky-nas.handbrake
-    echo "plex_convert_filename=\"$media_filename\"" >> $home_temp/conky-nas.handbrake
-    echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $home_temp/conky-nas.handbrake
-    echo "plex_convert_format=\"$media_standard_resolution\"" >> $home_temp/conky-nas.handbrake
-    echo "plex_convert_duration=\"$media_duration\"" >> $home_temp/conky-nas.handbrake
+    if [[ "$EUID" == "0" ]]; then
+      main_user_home=` echo ~$(id -nu 1000)`
+      main_user_folder=` echo $main_user_home"/.config/plex_convert"`
+      mkdir -p "$main_user_folder"
+      conky_file_output=$main_user_folder
+    else
+      conky_file_output=$home_temp
+    fi
+    echo "plex_convert_status=\"[ $current_process / $array_total ]\""  > $conky_file_output/conky-nas.handbrake
+    echo "plex_convert_title=\"$media_name\"" >> $conky_file_output/conky-nas.handbrake
+    echo "plex_convert_filename=\"$media_filename\"" >> $conky_file_output/conky-nas.handbrake
+    echo "plex_convert_type=\"$(echo $media_type | sed 's/s$//')\"" >> $conky_file_output/conky-nas.handbrake
+    echo "plex_convert_format=\"$media_standard_resolution\"" >> $conky_file_output/conky-nas.handbrake
+    echo "plex_convert_duration=\"$media_duration\"" >> $conky_file_output/conky-nas.handbrake
     echo -e "$ui_tag_encoding Sending the file to HandBrake..."
     time1=`date +%s`
     HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
@@ -832,7 +840,7 @@ if [[ "$processing" != "no" ]]; then
       echo -e "$ui_tag_bad Handbrake preset not found ($handbrake_profile.json)"
   fi
 fi
-rm "$home_temp/conky-nas.handbrake" 2>/dev/null
+rm "$conky_file_output/conky-nas.handbrake" 2>/dev/null
 rm "$home_temp/handbrake_process.txt" 2>/dev/null
 done
 if [[ "${my_files[@]}" == "" ]]; then
