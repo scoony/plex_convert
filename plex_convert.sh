@@ -73,15 +73,15 @@ while getopts eusht:f:cm:l:-: OPT; do
             arg_display_mode="$OPTARG"
             echo -e "\033[1m$script_name_cap - manual tagging log\033[0m"
             echo ""
-            tmdb_id=` filebot -script fn:xattr "$file" | grep -oP '(?<=tmdbId\":)[^,]*'`
+            tmdb_id=` filebot -script fn:xattr "$arg_display_mode" | grep -oP '(?<=tmdbId\":)[^,]*'`
             if [[ "$tmdb_id" == "" ]]; then
-              filebot_result=` filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{id}/{n} ({y})" --output $home_temp | grep "\[TEST\]" | grep -oP '(?<= to \[)[^\]]*'`
+              filebot_result=` filebot --action test -script fn:amc -rename "$arg_display_mode" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{id}/{n} ({y})" --output $home_temp | grep "\[TEST\]" | grep -oP '(?<= to \[)[^\]]*'`
               tmdb_id=` dirname $filebot_result | sed 's|^/||' | head -n1`
             fi
-              poster_url=` curl -L -s -m 3 "https://www.themoviedb.org/movie/$tmdb_id" | grep "og:image" | head -n1 | grep -oP '(?<=content=\").*(?=\">)'`
+            poster_url=` curl -L -s -m 3 "https://www.themoviedb.org/movie/$tmdb_id" | grep "og:image" | head -n1 | grep -oP '(?<=content=\").*(?=\">)'`
             echo "Poster Link: https://image.tmdb.org"$poster_url
             curl -s -m 3 -o "$HOME/poster.jpg" "https://image.tmdb.org$poster_url"
-            mkvpropedit "$file" --attachment-name "cover" --attachment-mime-type "image/jpeg" --add-attachment "$HOME/poster.jpg" >/dev/null
+            mkvpropedit "$arg_display_mode" --attachment-name "cover" --attachment-mime-type "image/jpeg" --add-attachment "$HOME/poster.jpg" >/dev/null
             rm "$HOME/poster.jpg"
             echo "Poster applied"
             exit 0
