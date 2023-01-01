@@ -9,7 +9,7 @@ check_cron=`echo $-`
 if [[ "$check_cron" =~ "i" ]]; then
   process_number="2"
 else
-  process_number="2"
+  process_number="3"
 fi
 if [[ "$check_dupe" > "$process_number" ]]; then
   echo "Script already running ($check_dupe)"
