@@ -710,7 +710,7 @@ if [[ "$processing" != "no" ]]; then
     final_target=`echo $download_folder_location"/"$target_folder/$media_filename"-part"`
 ## Conky-nas intégration
     if [[ "$EUID" == "0" ]]; then
-      main_user_home=` echo ~$(id -nu 1000)`
+      main_user_home=` echo ~/$(id -nu 1000)`
       main_user_folder=` echo $main_user_home"/.config/plex_convert"`
       mkdir -p "$main_user_folder"
       conky_file_output=$main_user_folder
