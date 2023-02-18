@@ -376,8 +376,13 @@ function encoding_loading() {
   tput civis # cursor invisible
   mon_printf="\r                                                                             "
   while kill -0 "$pid" 2>/dev/null; do
-    progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
-    time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
+    if [[ -f "$home_temp/handbrake_process.txt" ]]; then
+      progress=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $6 }'`
+      time_left=`cat -A "$home_temp/handbrake_process.txt" | tr "^M" "\n" | tail -n1 | awk '{ print $NF }' | sed 's/)//'`
+    else
+      progress="0"
+      time_left=""
+    if
     sed -i '/plex_convert_percent/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
     sed -i '/plex_convert_time_left/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
     echo "plex_convert_percent=\"$progress\"" >> $conky_file_output/conky-nas.handbrake 2>/dev/null
