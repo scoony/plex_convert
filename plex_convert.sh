@@ -382,7 +382,7 @@ function encoding_loading() {
     else
       progress="0"
       time_left=""
-    if
+    fi
     sed -i '/plex_convert_percent/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
     sed -i '/plex_convert_time_left/d' $conky_file_output/conky-nas.handbrake 2>/dev/null
     echo "plex_convert_percent=\"$progress\"" >> $conky_file_output/conky-nas.handbrake 2>/dev/null
