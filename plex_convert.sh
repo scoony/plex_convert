@@ -431,6 +431,10 @@ my_dependencies="filebot curl awk HandBrakeCLI mediainfo mkvpropedit"
 for dependency in $my_dependencies ; do
   if command -v $dependency > /dev/null 2>/dev/null ; then
     echo -e "$ui_tag_ok Dependency: $dependency"
+  elif [[ "$dependency" == "HandBrakeCLI" ]]; then
+    if [[ $(flatpak list | grep fr.handbrake.ghb) != "" ]]; then
+      echo -e "$ui_tag_ok Dependency: $dependency (FLATPAK)"
+    fi 
   else
     echo -e "$ui_tag_bad Dependency missing: $dependency"
   fi
@@ -731,7 +735,14 @@ if [[ "$processing" != "no" ]]; then
     echo "plex_convert_duration=\"$media_duration\"" >> $conky_file_output/conky-nas.handbrake
     echo -e "$ui_tag_encoding Sending the file to HandBrake..."
     time1=`date +%s`
-    HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
+    check_handbrake_flatpak=$(flatpak list | grep fr.handbrake.ghb)
+    if [[ -f /usr/bin/HandBrakeCLI ]]; then
+      HandBrakeCLI --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
+    elif [[ $(flatpak list | grep fr.handbrake.ghb) != "" ]]; then
+      flatpak run --command=HandBrakeCLI fr.handbrake.ghb --preset-import-file $my_preset_file -Z $handbrake_profile -i "$file" -o "$temp_target" > $home_temp/handbrake_process.txt 2>&1 & encoding_loading $!
+    else
+      exit 0
+    fi
     time2=`date +%s`
     duration_handbrake=$(($time2-$time1))
     echo -e "$ui_tag_encoding Conversion completed in $(date -d@$duration_handbrake -u +%H:%M:%S)"
