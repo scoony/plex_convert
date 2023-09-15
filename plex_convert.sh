@@ -577,11 +577,13 @@ rm $home_temp/media-audio-format.log
 #filebot -rename "$file" --action test -non-strict > $home_temp/media-filebot.log 2>&1 & display_loading $!
 filebot --action test -script fn:amc -rename "$file" -non-strict --def "seriesFormat=/{genres}/{n} - {s}x{e} - {t}" --def "movieFormat=/{genres}/{n} ({y})" --output $home_temp > $home_temp/media-filebot.log 2>&1 & display_loading $!
 media_type=` cat $home_temp/media-filebot.log | grep "^Rename" | awk '{ print $2 }'`
+cat $home_temp/media-filebot.log
 media_name_raw=`cat $home_temp/media-filebot.log | grep "^\[TEST\]" | grep -oP '(?<=to \[).*(?=\]$)'`
 media_name=` echo ${media_name_raw##*/} | cut -f 1 -d '.'`
 media_name_complete=${media_name_raw##*/}
 filebot_unknown=""
-if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]] || [[ "$media_name_raw" == "" ]]; then
+##if [[ "$(cat $home_temp/media-filebot.log)" =~ "Failed" ]] || [[ "$media_name_raw" == "" ]]; then
+if [[ "$media_name_raw" == "" ]]; then
   media_name="\e[41m! FileBot can't process this file !\e[0m"
   filebot_unknown="1"
 fi
