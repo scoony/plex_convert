@@ -759,7 +759,7 @@ if [[ "$processing" != "no" ]]; then
     len2_s=$(date -u -d "$epoch $file_duration" '+%s%3N')
     diff_s=$( echo "$len1_s - $len2_s" | bc )
     #echo $len1_s - $len2_s = $diff_s
-    diff_ab=`echo $diff_s | sed 's/.*\.//'`
+    diff_ab=`echo $diff_s | sed 's/-//'`
     #echo "Difference = "$diff_ab" milliseconds"
     #### EDIT SCOONY END
     if [[ "$media_duration" == "$file_duration" ]] || [[ "$diff_ab" -le "500" ]]; then
