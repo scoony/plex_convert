@@ -755,14 +755,14 @@ if [[ "$processing" != "no" ]]; then
     conversion_error="0"
     #### EDIT SCOONY START
     epoch='1970-01-01'
-    len1_s=$(date -u -d "$epoch $media_duration" '+%s.%3N')
-    len2_s=$(date -u -d "$epoch $file_duration" '+%s.%3N')
+    len1_s=$(date -u -d "$epoch $media_duration" '+%s%3N')
+    len2_s=$(date -u -d "$epoch $file_duration" '+%s%3N')
     diff_s=$( echo "$len1_s - $len2_s" | bc )
     #echo $len1_s - $len2_s = $diff_s
     diff_ab=`echo $diff_s | sed 's/.*\.//'`
     #echo "Difference = "$diff_ab" milliseconds"
     #### EDIT SCOONY END
-    if [[ "$media_duration" == "$file_duration" ]]; then
+    if [[ "$media_duration" == "$file_duration" ]] || [[ "$diff_ab" -le "500" ]]; then
       echo -e "$ui_tag_ok Medias durations match: $media_duration \u279F $file_duration"
     else
       echo -e "$ui_tag_bad Durations mismatch: $media_duration \u279F $file_duration"
